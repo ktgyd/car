@@ -17,7 +17,8 @@
   --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: dark;
 }
-html, body { height: 100%; }
+html, body { height: 100%; touch-action: none; -webkit-touch-callout: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+button, canvas, .screen, .fill { touch-action: none; -webkit-tap-highlight-color: transparent; }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
   font-family: var(--font-body); overflow: hidden; touch-action: none;
@@ -633,6 +634,14 @@ function bindTouch(id, key) {
   el.addEventListener('pointerdown', on); el.addEventListener('pointerup', off); el.addEventListener('pointercancel', off); el.addEventListener('pointerleave', off);
 }
 bindTouch('tL', 'l'); bindTouch('tR', 'r'); bindTouch('tG', 'g'); bindTouch('tB', 'b');
+/* Safari ignores touch-action for pinch and double-tap zoom, so cancel those gestures directly. */
+['gesturestart', 'gesturechange', 'gestureend'].forEach((n) => document.addEventListener(n, (e) => e.preventDefault(), { passive: false }));
+document.addEventListener('touchstart', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+document.addEventListener('touchmove', (e) => { if (e.touches.length > 1 || e.scale && e.scale !== 1) e.preventDefault(); }, { passive: false });
+let lastTap = 0;
+document.addEventListener('touchend', (e) => { const t = Date.now(); if (t - lastTap < 350 && !e.target.closest('.sw')) e.preventDefault(); lastTap = t; }, { passive: false });
+document.addEventListener('dblclick', (e) => e.preventDefault());
+document.addEventListener('contextmenu', (e) => e.preventDefault());
 $('swatches').addEventListener('click', (e) => {
   const b = e.target.closest('.sw'); if (!b) return;
   [].forEach.call(document.querySelectorAll('.sw'), (s) => s.setAttribute('aria-pressed', s === b ? 'true' : 'false'));

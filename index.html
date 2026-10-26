@@ -1,4 +1,9 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d12">
 <title>Dusk Circuit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,7 +24,7 @@
   color-scheme: dark;
 }
 html, body { height: 100%; touch-action: none; -webkit-touch-callout: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-button, canvas, .screen, .fill { touch-action: none; -webkit-tap-highlight-color: transparent; }
+button, canvas, .fill { touch-action: none; -webkit-tap-highlight-color: transparent; }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
   font-family: var(--font-body); overflow: hidden; touch-action: none;
@@ -112,6 +117,31 @@ b { font-weight: 600; }
 }
 @media (prefers-reduced-motion: reduce) { #bfx { display: none; } }
 
+/* Ranking */
+.screen { touch-action: pan-y; }
+#end.screen { align-items: flex-start; justify-content: center; }
+#end .panel, #rank .panel { margin-block: auto; }
+#rank.screen { background: rgba(8,10,14,.92); align-items: flex-start; justify-content: center; }
+.note { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; min-height: 1.45em; }
+.rtabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.rtab { cursor: pointer; border: 1px solid var(--line); background: rgba(255,255,255,.05); color: var(--ink); border-radius: 999px; padding: 6px 12px; font-family: var(--font-display); font-style: italic; font-weight: 700; font-size: 14px; letter-spacing: .06em; text-transform: uppercase; touch-action: none; }
+.rtab:hover { background: rgba(255,255,255,.12); }
+.rtab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #170a02; }
+.rtab:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+.rlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; width: 100%; }
+.rlist li { display: grid; grid-template-columns: 2.2em minmax(3.2em, 1fr) auto auto; gap: 12px; align-items: baseline; padding: 5px 10px; border-radius: 6px; font-variant-numeric: tabular-nums; }
+.rlist li.hd { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); padding-block: 2px; }
+.rlist li.me { background: rgba(255,201,51,.18); }
+.rlist li span:first-child { color: var(--muted); }
+.rlist .nm { font-family: var(--font-display); font-style: italic; font-weight: 800; font-size: 20px; letter-spacing: .08em; }
+.rlist li span:nth-child(3) { font-weight: 600; text-align: right; }
+.rlist li span:nth-child(4) { color: var(--muted); text-align: right; min-width: 4.8em; }
+.card .rlist { max-height: 34vh; overflow-y: auto; }
+.iform { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.iform input { width: 6.5em; padding: 8px 12px; text-align: center; text-transform: uppercase; letter-spacing: .2em; font-family: var(--font-display); font-style: italic; font-weight: 800; font-size: 22px; color: var(--ink); background: rgba(255,255,255,.08); border: 2px solid var(--line); border-radius: 6px; outline: none; -webkit-user-select: text; user-select: text; }
+.iform input:focus { border-color: var(--accent-2); }
+.iform .btn { font-size: 20px; padding: 10px 26px 10px 22px; }
+
 /* Menu + results */
 .screen { position: fixed; inset: 0; display: flex; align-items: flex-start; overflow-y: auto; box-sizing: border-box; }
 #menu { background: linear-gradient(90deg, rgba(8,10,14,.86) 0%, rgba(8,10,14,.5) 42%, rgba(8,10,14,0) 72%); }
@@ -137,7 +167,37 @@ h1 { margin: 0; font-family: var(--font-display); font-style: italic; font-weigh
 @media (max-width: 560px) { .keys { display: none; } #menu { background: linear-gradient(0deg, rgba(8,10,14,.9) 0%, rgba(8,10,14,.5) 55%, rgba(8,10,14,0) 100%); } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
-
+<script type="module">
+/* Firebase Firestore ranking (same project as the Malang Tetris ranking). Collection: racing/{track}/entries */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
+import { getFirestore, collection, doc, getDoc, setDoc, getDocs, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
+try {
+  const app = initializeApp({
+    apiKey: "AIzaSyAjWpPVIqOfNzzFejozYn3gOwjUaotr_kE",
+    authDomain: "malangtetris-score.firebaseapp.com",
+    projectId: "malangtetris-score",
+    storageBucket: "malangtetris-score.firebasestorage.app",
+    messagingSenderId: "794462588025",
+    appId: "1:794462588025:web:9b03423fb935be099698a8"
+  });
+  const db = getFirestore(app);
+  window.fbBoard = {
+    async top(track) {
+      const snap = await getDocs(query(collection(db, "racing", track, "entries"), orderBy("ms", "asc"), limit(10)));
+      return snap.docs.map((d) => { const v = d.data(); return { id: d.id, n: String(v.n || "---"), ms: Number(v.ms), bl: Number(v.bl) }; });
+    },
+    async put(track, id, n, ms, bl) {
+      const ref = doc(db, "racing", track, "entries", id);
+      if ((await getDoc(ref)).exists()) return "exists";
+      await setDoc(ref, { n: n, ms: ms, bl: bl, t: serverTimestamp() });
+      return "ok";
+    }
+  };
+  window.dispatchEvent(new Event("fbready"));
+} catch (e) { console.warn(e); window.fbFailed = true; window.dispatchEvent(new Event("fbfail")); }
+</script>
+</head>
+<body>
 <canvas id="c" aria-label="Racing game view"></canvas>
 
 <div id="hud" class="fill inset" hidden>
@@ -186,7 +246,7 @@ h1 { margin: 0; font-family: var(--font-display); font-style: italic; font-weigh
         <button class="sw" data-c="0xe9ecef" style="background:#e9ecef" aria-label="White" aria-pressed="false"></button>
       </div>
     </div>
-    <button class="btn" id="go">Start engine</button>
+    <div class="btns"><button class="btn" id="go">Start engine</button><button class="btn ghost" id="rankBtn">Ranking</button></div>
     <ul class="keys">
       <li><kbd>W</kbd><kbd>&uarr;</kbd>Throttle</li>
       <li><kbd>S</kbd><kbd>&darr;</kbd>Brake / reverse</li>
@@ -201,6 +261,16 @@ h1 { margin: 0; font-family: var(--font-display); font-style: italic; font-weigh
   </div>
 </section>
 
+<section id="rank" class="screen inset" hidden>
+  <div class="panel card">
+    <p class="kicker">Ranking</p>
+    <div class="rtabs" id="rtabs" role="tablist" aria-label="Track"></div>
+    <p class="note" id="rnote">Loading…</p>
+    <ol class="rlist" id="rlist" hidden></ol>
+    <button class="btn" id="rclose">Back</button>
+  </div>
+</section>
+
 <section id="end" class="screen inset" hidden>
   <div class="panel card">
     <p class="kicker">Race finished</p>
@@ -209,6 +279,9 @@ h1 { margin: 0; font-family: var(--font-display); font-style: italic; font-weigh
       <div><span class="label">Total time</span><strong id="endTime">0:00.00</strong></div>
       <div><span class="label">Best lap</span><strong id="endBest">0:00.00</strong></div>
     </div>
+    <p class="note" id="endNote"></p>
+    <form class="iform" id="endForm" hidden><input id="ini" maxlength="3" placeholder="AAA" autocomplete="off" autocapitalize="characters" enterkeyhint="done" aria-label="Initials"><button class="btn" type="submit">Save</button></form>
+    <ol class="rlist" id="endList" hidden></ol>
     <div class="btns"><button class="btn" id="again">Race again</button><button class="btn ghost" id="menuBtn">Change track</button></div>
   </div>
 </section>
@@ -898,6 +971,7 @@ loadTrack(startTrack);
 /* ---------------- input ---------------- */
 const GAMEKEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '];
 addEventListener('keydown', (e) => {
+  if (e.target && e.target.tagName === 'INPUT') return;          // typing initials
   if (GAMEKEYS.indexOf(e.key) >= 0) e.preventDefault();
   const k = e.key.toLowerCase();
   keys[k] = true;
@@ -905,7 +979,7 @@ addEventListener('keydown', (e) => {
   if (k === 'c') camMode = (camMode + 1) % 3;
   if (k === 'm') toggleMute();
   if (k === 'r' && state === 'racing') respawn();
-  if (k === 'enter' && state === 'menu') startRace();
+  if (k === 'enter' && state === 'menu' && $('rank').hidden) startRace();
   if (k === 'p' || k === 'escape') setPaused(state !== 'paused');
 });
 addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
@@ -922,7 +996,7 @@ bindTouch('tL', 'l'); bindTouch('tR', 'r'); bindTouch('tG', 'g'); bindTouch('tB'
 document.addEventListener('touchstart', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
 document.addEventListener('touchmove', (e) => { if (e.touches.length > 1 || e.scale && e.scale !== 1) e.preventDefault(); }, { passive: false });
 let lastTap = 0;
-document.addEventListener('touchend', (e) => { const t = Date.now(); if (t - lastTap < 350 && !e.target.closest('.sw, .trk, .btn, .ibtn, .tbtn')) e.preventDefault(); lastTap = t; }, { passive: false });
+document.addEventListener('touchend', (e) => { const t = Date.now(); if (t - lastTap < 350 && !e.target.closest('.sw, .trk, .btn, .ibtn, .tbtn, .rtab, input')) e.preventDefault(); lastTap = t; }, { passive: false });
 document.addEventListener('dblclick', (e) => e.preventDefault());
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 $('swatches').addEventListener('click', (e) => {
@@ -984,7 +1058,7 @@ function setPaused(on) {
   $('quitBtn').hidden = !paused;
 }
 function toMenu() {
-  state = 'menu'; $('menu').hidden = false; $('hud').hidden = true; $('end').hidden = true; toast('', false, false, 0);
+  endReset(); state = 'menu'; $('menu').hidden = false; $('hud').hidden = true; $('end').hidden = true; toast('', false, false, 0);
   $('pauseBtn').classList.remove('is-paused'); $('quitBtn').hidden = true;
   if (AC && AC.state === 'suspended') AC.resume();
   resetRace();
@@ -994,6 +1068,151 @@ $('pauseBtn').addEventListener('click', (e) => { if (e.detail === 0) setPaused(s
 $('quitBtn').addEventListener('click', toMenu);
 $('menuBtn').addEventListener('click', toMenu);
 document.addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true); });
+
+/* ---------------- ranking ----------------
+   Score = total time over LAPS laps, per track, lowest first. Shared through Firebase Firestore
+   (window.fbBoard, defined by the module script in <head>). If it cannot be reached, the record is kept
+   on this device and sent later (each record has a unique id, so sending twice never duplicates it). */
+let fbWait = null;
+function waitBoard() {                                 // resolves the board API, or null when Firebase never loaded
+  if (window.fbBoard) return Promise.resolve(window.fbBoard);
+  if (window.fbFailed) return Promise.resolve(null);
+  if (!fbWait) fbWait = new Promise((res) => {
+    const done = () => { clearTimeout(t); res(window.fbBoard || null); };
+    const t = setTimeout(() => { fbWait = null; res(null); }, 4000);
+    addEventListener('fbready', done, { once: true });
+    addEventListener('fbfail', done, { once: true });
+  });
+  return fbWait;
+}
+const dbReady = waitBoard();
+const SCORE_KEY = 'dusk.scores', INI_KEY = 'dusk.initials';
+let localScores = [];
+try { localScores = JSON.parse(localStorage.getItem(SCORE_KEY)) || []; } catch (e) { /* storage is optional */ }
+if (!Array.isArray(localScores)) localScores = [];
+const saveLocal = () => { try { localStorage.setItem(SCORE_KEY, JSON.stringify(localScores)); } catch (e) { /* storage is optional */ } };
+const ms2t = (ms) => fmt(ms / 1000);
+const withTimeout = (pr, ms) => Promise.race([pr, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms || 6000))]);
+const newUid = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+const inflight = new Set();
+let syncing = false, recSeq = 0, endRec = null, lastRecId = null;
+
+async function fetchTop(id) {                         // list from the shared store, or null when this view has none
+  const fb = await waitBoard(); if (!fb) return null;
+  const list = await withTimeout(fb.top(id));
+  return list.map((v) => ({ id: v.id, n: String(v.n || '---').slice(0, 3), ms: Number(v.ms), bl: Number(v.bl) }))
+    .filter((e) => isFinite(e.ms) && e.ms > 0);
+}
+function localTop(id) {
+  return localScores.filter((e) => e.t === id).sort((a, b) => a.ms - b.ms).slice(0, 10).map((e) => ({ id: e.u, n: e.n, ms: e.ms, bl: e.bl }));
+}
+async function loadBoard(id) {
+  try { const l = await fetchTop(id); if (l) return { list: l, shared: true }; } catch (e) { console.warn(e); }
+  return { list: localTop(id), shared: false };
+}
+async function putScore(e) {
+  const fb = await waitBoard(); if (!fb) throw new Error('no shared store');
+  await withTimeout(fb.put(e.t, e.u, e.n, e.ms, e.bl));
+}
+async function syncLocal() {                          // send records that could not be uploaded earlier
+  if (syncing) return;
+  syncing = true; let n = 0;
+  try {
+    for (const e of localScores.slice()) {
+      if (e.up || inflight.has(e.u)) continue;
+      inflight.add(e.u);
+      try { await putScore(e); e.up = true; n++; } catch (err) { break; } finally { inflight.delete(e.u); }
+    }
+  } finally { syncing = false; }
+  if (n) saveLocal();
+}
+addEventListener('load', () => setTimeout(syncLocal, 1500));
+addEventListener('online', syncLocal);
+
+function fillRank(ol, list, mineId) {
+  ol.textContent = '';
+  const row = (cells, cls) => {
+    const li = document.createElement('li'); if (cls) li.className = cls;
+    cells.forEach((t, k) => { const s = document.createElement('span'); s.textContent = t; if (k === 1 && cls !== 'hd') s.className = 'nm'; li.appendChild(s); });
+    ol.appendChild(li);
+  };
+  row(['#', 'Name', 'Time', 'Best lap'], 'hd');
+  list.forEach((e, i) => row([String(i + 1), e.n, ms2t(e.ms), isFinite(e.bl) && e.bl > 0 ? ms2t(e.bl) : '--'], mineId && e.id === mineId ? 'me' : ''));
+}
+
+/* ranking screen, opened from the menu */
+const rk = { seq: 0 };
+async function openBoard(i) {
+  const my = ++rk.seq;
+  [].forEach.call(document.querySelectorAll('.rtab'), (b) => b.setAttribute('aria-selected', Number(b.dataset.i) === i ? 'true' : 'false'));
+  $('rnote').textContent = 'Loading…'; $('rlist').hidden = true;
+  const b = await loadBoard(TRACKS[i].id);
+  if (my !== rk.seq) return;
+  if (b.list.length) fillRank($('rlist'), b.list, lastRecId);
+  $('rlist').hidden = !b.list.length;
+  $('rnote').textContent = !b.list.length ? 'No records yet. Finish a race to set the first one.'
+    : b.shared ? 'Best total time over ' + LAPS + ' laps. Top 10 on ' + TRACKS[i].name + '.'
+      : 'The shared ranking is not available here. Showing records saved on this device.';
+}
+{
+  const box = $('rtabs');
+  TRACKS.forEach((d, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'rtab'; b.dataset.i = String(i); b.textContent = d.name;
+    b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', 'false');
+    b.addEventListener('click', () => openBoard(i));
+    box.appendChild(b);
+  });
+}
+$('rankBtn').addEventListener('click', () => { $('rank').hidden = false; openBoard(curTrack); $('rclose').focus({ preventScroll: true }); });
+$('rclose').addEventListener('click', () => { rk.seq++; $('rank').hidden = true; });
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('rank').hidden) { rk.seq++; $('rank').hidden = true; } });
+
+/* result screen: ask for initials when the time makes the top 10, then show the board */
+function endReset() { recSeq++; endRec = null; lastRecId = null; $('endForm').hidden = true; $('endList').hidden = true; $('endNote').textContent = ''; }
+function focusInitials() { if (endRec && endRec.pending && !$('end').hidden) $('ini').focus({ preventScroll: true }); }
+async function beginRecord() {
+  const seq = ++recSeq, tr = TRACKS[curTrack];
+  lastRecId = null; $('endForm').hidden = true; $('endList').hidden = true; $('endNote').textContent = 'Checking the ranking…';
+  const rec = endRec = { t: tr.id, name: tr.name, ms: Math.round(finishTime * 1000), bl: Math.round(bestLap * 1000), pending: false, saving: false, done: false };
+  const b = await loadBoard(tr.id);
+  if (seq !== recSeq) return;
+  const l = b.list, worst = l.length ? l[l.length - 1].ms : Infinity;
+  if (l.length < 10 || rec.ms < worst) {
+    rec.pending = true;
+    let ini = ''; try { ini = localStorage.getItem(INI_KEY) || ''; } catch (e) { /* storage is optional */ }
+    $('ini').value = ini;
+    $('endNote').textContent = 'A top 10 time on ' + tr.name + '. Enter your initials.';
+    $('endForm').hidden = false; focusInitials();
+  } else {
+    $('endNote').textContent = 'Not in the top 10 this time. Tenth place on ' + tr.name + ' is ' + ms2t(worst) + '.';
+    fillRank($('endList'), l, null); $('endList').hidden = false;
+  }
+}
+$('endForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const rec = endRec, seq = recSeq;
+  if (!rec || !rec.pending || rec.saving) return;
+  rec.saving = true;
+  const n = ($('ini').value.trim().toUpperCase() || '---').slice(0, 3);
+  try { localStorage.setItem(INI_KEY, n); } catch (err) { /* storage is optional */ }
+  const entry = { u: newUid(), t: rec.t, n: n, ms: rec.ms, bl: rec.bl, up: false };
+  localScores.push(entry);
+  const keep = new Set(localTop(rec.t).map((x) => x.id));
+  localScores = localScores.filter((x) => x.t !== rec.t || keep.has(x.u));
+  saveLocal();
+  lastRecId = entry.u; rec.pending = false; $('endForm').hidden = true; $('endNote').textContent = 'Saving…';
+  let sent = false;
+  inflight.add(entry.u);
+  try { await putScore(entry); entry.up = true; sent = true; saveLocal(); } catch (err) { console.warn(err); } finally { inflight.delete(entry.u); }
+  rec.saving = false; rec.done = true;
+  if (seq !== recSeq) return;
+  const b = await loadBoard(rec.t);
+  if (seq !== recSeq) return;
+  const idx = b.list.findIndex((x) => x.id === entry.u);
+  $('endNote').textContent = (idx >= 0 ? 'You are #' + (idx + 1) + ' on ' + rec.name + '.' : 'Saved.') +
+    (sent ? '' : ' Saved on this device. It will be sent to the shared ranking when it can connect.');
+  fillRank($('endList'), b.list, entry.u); $('endList').hidden = false;
+});
 
 /* ---------------- audio ---------------- */
 let AC = null, A = null, muted = false;
@@ -1081,7 +1300,7 @@ function respawn() {
   const i = me.idx; me.x = P[i].x; me.z = P[i].z; me.th = Math.atan2(T[i].x, T[i].z); me.vx = me.vz = 0; me.yaw = 0; me.steer = 0; camTh = me.th;
 }
 function startRace() {
-  initAudio();
+  initAudio(); endReset();
   $('menu').hidden = true; $('hud').hidden = false; $('end').hidden = true;
   resetRace(); state = 'countdown'; cd = 3.99; cdShown = 0;
 }
@@ -1171,7 +1390,8 @@ function finishRace() {
   $('endPos').textContent = 'P' + rankOf();
   $('endTime').textContent = fmt(finishTime); $('endBest').textContent = fmt(bestLap);
   toast('Finish', false, false, 0);
-  setTimeout(() => { if (state === 'finished') { $('end').hidden = false; toast('', false, false, 0); } }, 2200);
+  beginRecord();
+  setTimeout(() => { if (state === 'finished') { $('end').hidden = false; toast('', false, false, 0); focusInitials(); } }, 2200);
 }
 function rankOf() {
   const mine = me.cross * N + me.idx; let rank = 1;
@@ -1357,5 +1577,5 @@ function frame(now) {
 requestAnimationFrame(frame);
 })();
 </script>
-
-</body></html>
+</body>
+</html>

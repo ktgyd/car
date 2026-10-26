@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0b0d12">
+<style>
+/* base reset (the artifact host used to provide this): the hidden attribute must always win over display rules */
+[hidden]:not([hidden=until-found i]){display:none!important}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+img{max-width:100%}
+</style>
 <title>Dusk Circuit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -387,9 +393,11 @@ const TRACKS = [
 /* ---------------- renderer ---------------- */
 const canvas = $('c');
 let renderer;
-try {
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-} catch (e) { $('err').hidden = false; return; }
+let rErr = null;
+for (const opt of [{ antialias: true, powerPreference: 'high-performance' }, { antialias: false }, { antialias: false, alpha: false, stencil: false, depth: true }]) {
+  try { renderer = new THREE.WebGLRenderer(Object.assign({ canvas }, opt)); rErr = null; break; } catch (e) { rErr = e; }
+}
+if (!renderer) { $('err').hidden = false; $('err').appendChild(document.createElement('br')); $('err').appendChild(document.createTextNode('(' + (rErr && rErr.message ? rErr.message : String(rErr)).slice(0, 160) + ')')); return; }
 const maxPR = Math.min(window.devicePixelRatio || 1, 2);
 let pr = maxPR;
 renderer.setPixelRatio(pr);

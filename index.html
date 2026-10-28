@@ -71,6 +71,12 @@ b { font-weight: 600; }
 #touch .grp { display: flex; gap: 12px; pointer-events: auto; }
 #touch button { width: clamp(54px, 15vw, 76px); height: clamp(54px, 15vw, 76px); border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: var(--font-display); font-style: italic; font-weight: 800; font-size: clamp(12px, 3.4vw, 18px); letter-spacing: .06em; touch-action: none; }
 #touch button.on { background: var(--accent); color: #140a02; }
+#tPad { position: relative; width: clamp(112px, 32vw, 156px); height: clamp(112px, 32vw, 156px); border-radius: 50%; border: 1px solid var(--line); background: radial-gradient(circle, rgba(255,255,255,.05) 0 30%, var(--panel) 31%); pointer-events: auto; touch-action: none; align-self: flex-end; }
+#tPad::before { content: ""; position: absolute; inset: 10%; border-radius: 50%; border: 1px dashed var(--line); }
+#tPad i { position: absolute; width: 2px; height: 10px; left: calc(50% - 1px); top: 4px; background: var(--muted); border-radius: 1px; transform-origin: 50% calc(clamp(112px, 32vw, 156px) / 2 - 4px); }
+#tPad i.t3 { transform: rotate(90deg); } #tPad i.t9 { transform: rotate(-90deg); } #tPad i.t12 { background: var(--accent-2); }
+#tKnob { position: absolute; left: 50%; top: 50%; width: 44%; height: 44%; margin: -22% 0 0 -22%; border-radius: 50%; background: rgba(255,255,255,.14); border: 1px solid var(--line); pointer-events: none; }
+#tPad.on #tKnob { background: var(--accent); }
 @media (pointer: coarse) { #touch { display: flex; } #hud .speedo { bottom: 96px; } }
 
 /* Pause, boost and track picker */
@@ -233,7 +239,7 @@ try {
   </div>
   <div id="center"></div>
   <div id="touch">
-    <div class="grp"><button id="tL" aria-label="Steer left">&lt;</button><button id="tR" aria-label="Steer right">&gt;</button></div>
+    <div id="tPad" aria-label="Steering pad"><i class="t12"></i><i class="t3"></i><i class="t9"></i><div id="tKnob"></div></div>
     <div class="grp"><button id="tB" aria-label="Brake">BRAKE</button><button id="tN" class="boost" aria-label="Boost">BOOST</button><button id="tG" aria-label="Accelerate">GAS</button></div>
   </div>
 </div>
@@ -952,7 +958,7 @@ meCar.group.add(HEAD); meCar.group.add(HEAD.target);
 let state = 'menu', cd = 0, cdShown = 0, raceTime = 0, lapStart = 0, bestLap = Infinity, finishTime = 0, shake = 0, camMode = 0, camTh = 0;
 let boost = 0.5, boostFx = 0, boostLock = false, boosting = false, wasBoosting = false;
 const BOOST_DRAIN = 0.36, BOOST_REGEN = 0.045, BOOST_DRIFT = 0.16;   // gauge per second
-const keys = {}, touch = { l: 0, r: 0, g: 0, b: 0, n: 0 };
+const keys = {}, touch = { l: 0, r: 0, s: 0, g: 0, b: 0, n: 0 };
 
 function gridSlot(n) {
   const row = n >> 1, col = n & 1;
@@ -1002,7 +1008,28 @@ function bindTouch(id, key) {
   const off = (e) => { e.preventDefault(); touch[key] = 0; el.classList.remove('on'); };
   el.addEventListener('pointerdown', on); el.addEventListener('pointerup', off); el.addEventListener('pointercancel', off); el.addEventListener('pointerleave', off);
 }
-bindTouch('tL', 'l'); bindTouch('tR', 'r'); bindTouch('tG', 'g'); bindTouch('tB', 'b'); bindTouch('tN', 'n');
+bindTouch('tG', 'g'); bindTouch('tB', 'b'); bindTouch('tN', 'n');
+/* Steering pad: angle from 12 o'clock decides direction (right half = right, left half = left),
+   strength = sin(angle) up to 3 / 9 o'clock (full lock), then stays full lock below that. */
+(function () {
+  const pad = $('tPad'), knob = $('tKnob'); let pid = null;
+  function upd(e) {
+    const r = pad.getBoundingClientRect(), R = r.width / 2;
+    const dx = e.clientX - (r.left + R), dy = e.clientY - (r.top + R), d = Math.hypot(dx, dy);
+    if (d < R * 0.16) touch.s = 0;                // center dead zone
+    else if (dy <= 0) touch.s = dx / d;           // upper half: sin(angle) -> 12 o'clock straight, 3/9 o'clock full lock
+    else touch.s = Math.sign(dx) * Math.min(1, Math.abs(dx) / d / 0.26); // past 3/9 o'clock: stay at full lock (tiny ramp right at 6 o'clock to avoid flicker)
+    const k = d ? Math.min(d, R * 0.5) / d : 0;
+    knob.style.transform = 'translate(' + dx * k + 'px,' + dy * k + 'px)';
+  }
+  function end(e) {
+    if (e.pointerId !== pid) return;
+    pid = null; touch.s = 0; pad.classList.remove('on'); knob.style.transform = '';
+  }
+  pad.addEventListener('pointerdown', (e) => { if (pid !== null) return; e.preventDefault(); pid = e.pointerId; pad.setPointerCapture(pid); pad.classList.add('on'); upd(e); });
+  pad.addEventListener('pointermove', (e) => { if (e.pointerId === pid) { e.preventDefault(); upd(e); } });
+  pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end); pad.addEventListener('lostpointercapture', end);
+})();
 /* Safari ignores touch-action for pinch and double-tap zoom, so cancel those gestures directly. */
 ['gesturestart', 'gesturechange', 'gestureend'].forEach((n) => document.addEventListener(n, (e) => e.preventDefault(), { passive: false }));
 document.addEventListener('touchstart', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
@@ -1510,10 +1537,10 @@ function frame(now) {
   accT += dt; accN++;
   if (accN >= 90) { if (accT / accN > 0.028 && pr > 0.75) { pr = Math.max(0.75, pr - 0.25); renderer.setPixelRatio(pr); resize(); } accT = 0; accN = 0; }
 
-  const left = keys['a'] || keys['arrowleft'] || touch.l, right = keys['d'] || keys['arrowright'] || touch.r;
+  const left = keys['a'] || keys['arrowleft'], right = keys['d'] || keys['arrowright'];
   let thr = (keys['w'] || keys['arrowup'] || touch.g) ? 1 : 0, brk = (keys['s'] || keys['arrowdown'] || touch.b) ? 1 : 0;
   const hb = !!keys[' '];
-  const steerT = (left ? 1 : 0) - (right ? 1 : 0);
+  const steerT = touch.s ? -touch.s : (left ? 1 : 0) - (right ? 1 : 0);
 
   const wantBoost = !!(keys['shift'] || keys['e'] || touch.n);
   if (!wantBoost) boostLock = false;

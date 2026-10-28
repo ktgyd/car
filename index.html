@@ -78,6 +78,9 @@ b { font-weight: 600; }
 .ibtn { pointer-events: auto; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--ink); display: grid; place-items: center; padding: 0; cursor: pointer; touch-action: none; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .ibtn svg { width: 16px; height: 16px; fill: currentColor; }
 .ibtn .ir { display: none; }
+#soundBtn .son { display: none; }
+#soundBtn.is-on .son { display: inline; }
+#soundBtn.is-on .soff { display: none; }
 .ibtn.is-paused .ip { display: none; }
 .ibtn.is-paused .ir { display: inline; }
 .ibtn:hover { background: rgba(255,255,255,.16); }
@@ -215,6 +218,7 @@ try {
   </div>
   <div class="tc">
     <button class="ibtn" id="pauseBtn" aria-label="Pause" title="Pause (P)" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path class="ip" d="M6.5 4.5h4v15h-4zM13.5 4.5h4v15h-4z"/><path class="ir" d="M7 4.5l12 7.5-12 7.5z"/></svg></button>
+    <button class="ibtn" id="soundBtn" aria-label="Sound off. Tap to turn on" title="Sound (M)" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.6L12 5.5v13l-4.4-4H4z"/><g class="son"><path d="M15 9a4.2 4.2 0 0 1 0 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M17.4 6.6a7.6 7.6 0 0 1 0 10.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></g><path class="soff" d="M15.2 9.4l5 5.2m0-5.2l-5 5.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     <button class="tbtn" id="quitBtn" hidden>Menu</button>
   </div>
   <div class="tr">
@@ -1223,7 +1227,7 @@ $('endForm').addEventListener('submit', async (e) => {
 });
 
 /* ---------------- audio ---------------- */
-let AC = null, A = null, muted = false;
+let AC = null, A = null, muted = true;      // sound starts off; the speaker button next to pause turns it on
 function initAudio() {
   try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* plays through the iPhone silent switch where supported */ }
   if (AC) { if (AC.state !== 'running') AC.resume(); return; }
@@ -1248,7 +1252,19 @@ function initAudio() {
     const ub = AC.createBufferSource(); ub.buffer = AC.createBuffer(1, 1, 22050); ub.connect(AC.destination); ub.start(0);   // iOS unlock
   } catch (e) { AC = null; A = null; }
 }
-function toggleMute() { muted = !muted; if (A) A.master.gain.value = muted ? 0 : 0.9; }
+function syncSoundBtn() {
+  const b = $('soundBtn'); b.classList.toggle('is-on', !muted);
+  b.setAttribute('aria-label', muted ? 'Sound off. Tap to turn on' : 'Sound on. Tap to turn off');
+}
+function toggleMute() {
+  muted = !muted;
+  if (!muted && !AC) initAudio();                      // normally the context already exists from the race start
+  if (A) A.master.gain.setTargetAtTime(muted ? 0 : 0.9, AC.currentTime, 0.02);
+  syncSoundBtn();
+}
+$('soundBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); toggleMute(); });
+$('soundBtn').addEventListener('click', (e) => { if (e.detail === 0) toggleMute(); });
+syncSoundBtn();
 /* iOS stops the audio engine when the app is backgrounded; wake it on the next touch */
 document.addEventListener('pointerdown', () => { if (AC && AC.state !== 'running' && state !== 'paused') AC.resume(); });
 function bump() {
@@ -1482,7 +1498,7 @@ function hud(thr) {
   const bw = Math.round(boostFx * 50) / 50;
   if (cache.bfx !== bw) { cache.bfx = bw; $('bfx').style.opacity = String(bw); }
   const live = state === 'racing' || state === 'countdown' || state === 'paused';
-  if (cache.live !== live) { cache.live = live; $('pauseBtn').hidden = !live; }
+  if (cache.live !== live) { cache.live = live; $('pauseBtn').hidden = !live; $('soundBtn').hidden = !live; }
   return rpm;
 }
 

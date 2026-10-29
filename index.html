@@ -180,6 +180,23 @@ h1 { margin: 0; font-family: var(--font-display); font-style: italic; font-weigh
 .res strong { font-family: var(--font-display); font-style: italic; font-weight: 800; font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; }
 #err { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; color: var(--ink); background: var(--bg); line-height: 1.5; }
 @media (max-width: 560px) { .keys { display: none; } #menu { background: linear-gradient(0deg, rgba(8,10,14,.9) 0%, rgba(8,10,14,.5) 55%, rgba(8,10,14,0) 100%); } }
+
+/* Menu: landscape (phones/short windows) -> two columns so Start is always visible; portrait keeps the single stack */
+.mcol { display: contents; }
+@media (orientation: landscape) and (max-height: 700px) {
+  #menu { background: linear-gradient(90deg, rgba(8,10,14,.88) 0%, rgba(8,10,14,.62) 100%); }
+  #menu .panel { width: min(100%, 920px); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); column-gap: 28px; row-gap: 14px; margin-block: auto; align-items: start; }
+  .mcol { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .mcol.a { grid-column: 1; grid-row: 1; }
+  .mcol.c { grid-column: 1; grid-row: 2; }
+  .mcol.b { grid-column: 2; grid-row: 1 / span 2; }
+  h1 { font-size: clamp(34px, 11vh, 80px); }
+  .lede { max-width: none; font-size: 14px; }
+  .keys { display: none; }
+  .tracks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .trk { flex-direction: row; align-items: center; }
+  .trk canvas { width: 38%; flex: none; }
+}
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 <script type="module">
@@ -246,9 +263,12 @@ try {
 
 <section id="menu" class="screen inset">
   <div class="panel">
+   <div class="mcol a">
     <p class="kicker" id="kicker">3 laps · 6 cars</p>
     <h1>Dusk <br>Circuit</h1>
     <p class="lede" id="lede">Six cars on the grid, three laps to the flag. The lamps are on and the sun is almost down.</p>
+   </div>
+   <div class="mcol b">
     <div>
       <span class="label">Track</span>
       <div class="tracks" id="tracks" role="radiogroup" aria-label="Track"></div>
@@ -262,6 +282,8 @@ try {
         <button class="sw" data-c="0xe9ecef" style="background:#e9ecef" aria-label="White" aria-pressed="false"></button>
       </div>
     </div>
+   </div>
+   <div class="mcol c">
     <div class="btns"><button class="btn" id="go">Start engine</button><button class="btn ghost" id="rankBtn">Ranking</button></div>
     <ul class="keys">
       <li><kbd>W</kbd><kbd>&uarr;</kbd>Throttle</li>
@@ -274,6 +296,7 @@ try {
       <li><kbd>R</kbd>Back on track</li>
       <li><kbd>M</kbd>Sound on / off</li>
     </ul>
+   </div>
   </div>
 </section>
 

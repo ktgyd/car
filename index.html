@@ -979,7 +979,7 @@ HEAD.position.set(0, 0.8, 1.6); HEAD.target.position.set(0, 0, 30);
 meCar.group.add(HEAD); meCar.group.add(HEAD.target);
 
 let state = 'menu', cd = 0, cdShown = 0, raceTime = 0, lapStart = 0, bestLap = Infinity, finishTime = 0, shake = 0, camMode = 0, camTh = 0;
-let boost = 0.5, boostFx = 0, boostLock = false, boosting = false, wasBoosting = false;
+let autoGas = 0, boost = 0.5, boostFx = 0, boostLock = false, boosting = false, wasBoosting = false;
 const BOOST_DRAIN = 0.36, BOOST_REGEN = 0.045, BOOST_DRIFT = 0.16;   // gauge per second
 const keys = {}, touch = { l: 0, r: 0, s: 0, g: 0, b: 0, n: 0 };
 
@@ -1002,7 +1002,7 @@ function resetRace() {
     a.x = s.x; a.z = s.z; a.th = s.th; placeCar(a.car, a.x, a.z, a.th);
   }
   raceTime = 0; lapStart = 0; bestLap = Infinity; finishTime = 0;
-  boost = 0.5; boostFx = 0; boostLock = false; boosting = false; wasBoosting = false;
+  autoGas = 0; boost = 0.5; boostFx = 0; boostLock = false; boosting = false; wasBoosting = false;
   $('best').textContent = '--';
 }
 let startTrack = 0;
@@ -1567,6 +1567,10 @@ function frame(now) {
 
   const wantBoost = !!(keys['shift'] || keys['e'] || touch.n);
   if (!wantBoost) boostLock = false;
+  // keep full throttle while boost is held (even when the gauge is empty) and for a short grace after,
+  // so moving the thumb from BOOST to GAS doesn't drop the speed. Braking cancels it.
+  if (wantBoost) autoGas = 1.5; else autoGas = Math.max(0, autoGas - dt);
+  if (autoGas > 0 && brk === 0 && state === 'racing') thr = 1;
   boosting = state === 'racing' && wantBoost && !boostLock && boost > 0;
   if (boosting) { boost -= BOOST_DRAIN * dt; if (boost <= 0) { boost = 0; boosting = false; boostLock = true; } }
   else if (state === 'racing') boost = Math.min(1, boost + (BOOST_REGEN + (me.slip > 5 && Math.hypot(me.vx, me.vz) > 15 && !me.off ? BOOST_DRIFT : 0)) * dt);

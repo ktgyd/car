@@ -1412,11 +1412,11 @@ function stepPlayer(dt, thr0, brk, hb, steerTarget, boosting) {
   m.aF = (vF - prevF) / dt;
 
   // steering (bicycle model, capped by lateral grip)
-  const maxSteer = lerp(0.62, 0.1, clamp(speed / 55, 0, 1));
+  const maxSteer = lerp(0.62, 0.2, clamp(speed / 80, 0, 1));
   m.steerIn += (steerTarget - m.steerIn) * (1 - Math.exp(-(steerTarget === 0 ? 12 : 7) * dt));
   m.steer += (m.steerIn * maxSteer - m.steer) * (1 - Math.exp(-14 * dt));
   let yaw = vF / 2.8 * Math.tan(m.steer);
-  const yawMax = (off ? 12 : 27) * (hb ? 0.85 : 1) / Math.max(Math.abs(vF), 6);
+  const yawMax = (off ? 12 : 35) * (hb ? 0.85 : 1) / Math.max(Math.abs(vF), 6);
   yaw = clamp(yaw, -yawMax, yawMax);
   if (hb) yaw *= 1.5;
   m.yaw += (yaw - m.yaw) * (1 - Math.exp(-12 * dt));
